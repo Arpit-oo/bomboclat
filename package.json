@@ -1,0 +1,19 @@
+{
+  "name": "bomboclat",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Open-source pixel bongo cat desktop companion",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "vite": "^6"
+  }
+}
