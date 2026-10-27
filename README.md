@@ -26,7 +26,7 @@ npx tauri icon app-icon.png
 ## Roadmap
 
 - [x] Phase 1: Tauri scaffold, transparent draggable window, pixel cat, global input hook, eye tracking
-- [ ] Phase 2: Desk + slamming paws per key side, pressed-key bubble, sleep/wake
+- [x] Phase 2: Desk + slamming paws per key side, pressed-key bubble, sleep/wake
 - [ ] Phase 3: Tray, settings window, persistence, global shortcut, autostart
 - [ ] Phase 4: Claude Code agent watcher, reminders, speech bubbles
 - [ ] Phase 5: Packaging, CI, releases

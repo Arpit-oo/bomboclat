@@ -21,7 +21,7 @@ export function drawCatArt(p, state) {
 
   const eox = Math.round(Math.max(-1, Math.min(1, (state.eyeOffsetX || 0))));
   const eoy = Math.round(Math.max(-1, Math.min(1, (state.eyeOffsetY || 0))));
-  const isSleeping = state.state === 'SLEEP';
+  const isSleeping = state.state === 'SLEEP' || state.blink;
 
   // --- Tail (wraps right, curls up) ---
   const tb = Math.round(Math.sin((state.time ?? Date.now()) / 500));
@@ -76,48 +76,20 @@ export function drawCatArt(p, state) {
   p.row(cx - 8, cx + 8, 16, black);
   p.row(cx - 7, cx + 7, 17, black);
 
-  // --- Ears (bigger, well-defined triangles) ---
-  // Left ear outer
-  p.dot(cx - 8, 7, black);
-  p.dot(cx - 9, 6, black);
-  p.dot(cx - 8, 6, black);
-  p.dot(cx - 10, 5, black);
-  p.dot(cx - 9, 5, black);
-  p.dot(cx - 8, 5, black);
-  p.dot(cx - 11, 4, black);
-  p.dot(cx - 10, 4, black);
-  p.dot(cx - 9, 4, black);
-  p.dot(cx - 12, 3, black);
-  p.dot(cx - 11, 3, black);
-  p.dot(cx - 10, 3, black);
-  p.dot(cx - 12, 2, black);
-  p.dot(cx - 11, 2, black);
-  // Left ear inner pink
-  p.dot(cx - 10, 4, '#4a2a3a');
-  p.dot(cx - 9, 4, '#4a2a3a');
-  p.dot(cx - 11, 3, '#4a2a3a');
-  p.dot(cx - 10, 3, '#4a2a3a');
-
-  // Right ear outer
-  p.dot(cx + 8, 7, black);
-  p.dot(cx + 9, 6, black);
-  p.dot(cx + 8, 6, black);
-  p.dot(cx + 10, 5, black);
-  p.dot(cx + 9, 5, black);
-  p.dot(cx + 8, 5, black);
-  p.dot(cx + 11, 4, black);
-  p.dot(cx + 10, 4, black);
-  p.dot(cx + 9, 4, black);
-  p.dot(cx + 12, 3, black);
-  p.dot(cx + 11, 3, black);
-  p.dot(cx + 10, 3, black);
-  p.dot(cx + 12, 2, black);
-  p.dot(cx + 11, 2, black);
-  // Right ear inner pink
-  p.dot(cx + 10, 4, '#4a2a3a');
-  p.dot(cx + 9, 4, '#4a2a3a');
-  p.dot(cx + 11, 3, '#4a2a3a');
-  p.dot(cx + 10, 3, '#4a2a3a');
+  // --- Ears (filled triangles with pink inner) ---
+  const earPink = '#c0607a';
+  for (const s of [-1, 1]) {
+    const ex = (o) => cx + s * o;
+    p.dot(ex(10), 2, black);
+    p.row(Math.min(ex(11), ex(9)), Math.max(ex(11), ex(9)), 3, black);
+    p.row(Math.min(ex(11), ex(8)), Math.max(ex(11), ex(8)), 4, black);
+    p.row(Math.min(ex(11), ex(7)), Math.max(ex(11), ex(7)), 5, black);
+    p.row(Math.min(ex(10), ex(6)), Math.max(ex(10), ex(6)), 6, black);
+    p.row(Math.min(ex(9), ex(5)), Math.max(ex(9), ex(5)), 7, black);
+    p.row(Math.min(ex(10), ex(9)), Math.max(ex(10), ex(9)), 4, earPink);
+    p.row(Math.min(ex(10), ex(8)), Math.max(ex(10), ex(8)), 5, earPink);
+    p.row(Math.min(ex(9), ex(8)), Math.max(ex(9), ex(8)), 6, earPink);
+  }
 
   // --- Eyes (BIGGER — 4x4 whites) ---
   if (isSleeping) {
@@ -179,4 +151,67 @@ export function drawCatArt(p, state) {
   p.dot(cx - 1, 22, '#222');
   p.dot(cx + 1, 22, '#222');
   p.dot(cx, 23, '#222');
+}
+
+const DESK_TOP = '#d9a66b';
+const DESK = '#c8935a';
+const DESK_EDGE = '#7a5230';
+const DESK_FRONT = '#a0703f';
+const KB_FRAME = '#454c5a';
+const KB_KEY = '#6a7080';
+const KB_LIT = '#ffcc44';
+const PAD_PINK = '#e890a8';
+
+/** Desk across the bottom with a keyboard the cat sits behind. */
+function drawDesk(p, state) {
+  const cx = 20;
+  p.row(0, CAT_PX_W - 1, 30, DESK_TOP);
+  p.row(0, CAT_PX_W - 1, 31, DESK);
+  p.row(0, CAT_PX_W - 1, 32, DESK_EDGE);
+  p.rect(0, 33, CAT_PX_W, 6, DESK_FRONT);
+
+  p.row(cx - 12, cx + 12, 28, KB_FRAME);
+  p.row(cx - 12, cx + 12, 29, KB_FRAME);
+  p.row(cx - 12, cx + 12, 30, KB_FRAME);
+  for (let x = cx - 11; x <= cx + 11; x += 2) {
+    const lit = (state.leftPaw === 'down' && x < cx) || (state.rightPaw === 'down' && x > cx);
+    p.dot(x, 29, lit ? KB_LIT : KB_KEY);
+  }
+}
+
+/** One paw. side: -1 left, 1 right. Up paws show pink pads; down paws rest on the keys. */
+function drawPaw(p, side, down) {
+  const cx = 20;
+  const span = (a, b, y, c) => {
+    const x1 = cx + side * a;
+    const x2 = cx + side * b;
+    p.row(Math.min(x1, x2), Math.max(x1, x2), y, c);
+  };
+  const black = '#111111';
+  if (down) {
+    span(9, 5, 27, black);
+    span(10, 4, 28, black);
+    span(10, 4, 29, black);
+    span(9, 5, 30, black);
+    p.dot(cx + side * 9, 30, PAD_PINK);
+    p.dot(cx + side * 7, 30, PAD_PINK);
+    p.dot(cx + side * 5, 30, PAD_PINK);
+  } else {
+    span(11, 10, 22, black);
+    span(12, 9, 23, black);
+    span(12, 9, 24, black);
+    span(12, 9, 25, black);
+    span(11, 9, 26, black);
+    p.dot(cx + side * 12, 23, PAD_PINK);
+    p.dot(cx + side * 10, 23, PAD_PINK);
+    span(11, 10, 25, PAD_PINK);
+  }
+}
+
+/** Full bongo scene: cat behind a desk, paws following key presses. */
+export function drawScene(p, state) {
+  drawCatArt(p, state);
+  drawDesk(p, state);
+  drawPaw(p, -1, state.leftPaw === 'down');
+  drawPaw(p, 1, state.rightPaw === 'down');
 }
