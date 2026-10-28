@@ -1,4 +1,5 @@
 mod input;
+mod models;
 mod settings;
 mod tray;
 
@@ -20,6 +21,11 @@ fn wants_settings(args: &[String]) -> bool {
     args.iter().any(|a| a == "--settings")
 }
 
+#[tauri::command]
+fn frontend_log(msg: String) {
+    eprintln!("[webview] {msg}");
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -33,6 +39,8 @@ pub fn run() {
                 .with_state_flags(StateFlags::POSITION)
                 .with_denylist(&["settings"])
                 .build())
+        .plugin(tauri_plugin_dialog::init())
+        .register_uri_scheme_protocol("bcmodel", |ctx, req| models::serve(ctx.app_handle(), &req))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
@@ -47,10 +55,18 @@ pub fn run() {
             settings::reset_settings,
             tray::get_autostart,
             tray::set_autostart_cmd,
+            frontend_log,
+            models::list_models,
+            models::import_model,
+            models::remove_model,
         ])
         .setup(|app| {
             let handle = app.handle();
-            let s = settings::load(handle);
+            let mut s = settings::load(handle);
+            if s.model != models::PIXEL && models::find(handle, &s.model).is_none() {
+                // Model was deleted or BongoCat uninstalled.
+                s.model = models::PIXEL.into();
+            }
             app.manage(SettingsState(std::sync::Mutex::new(s.clone())));
             settings::apply(handle, &s);
             tray::build(handle)?;

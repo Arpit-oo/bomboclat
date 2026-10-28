@@ -8,6 +8,7 @@ const $ = (id) => document.getElementById(id);
 const TOGGLES = ['flip', 'alwaysOnTop', 'clickThrough', 'hideOnHover', 'keyBubble'];
 
 let settings = null;
+let models = [];
 let statusTimer = 0;
 
 function showSaved() {
@@ -21,8 +22,105 @@ async function patch(p) {
   showSaved();
 }
 
+function modelUrl(id, rel) {
+  const path = rel.split('/').map(encodeURIComponent).join('/');
+  return `http://bcmodel.localhost/${encodeURIComponent(id)}/${path}`;
+}
+
+function pixelThumb() {
+  const c = document.createElement('canvas');
+  c.width = CAT_PX_W;
+  c.height = CAT_PX_H;
+  const ctx = c.getContext('2d');
+  drawScene(
+    {
+      dot(x, y, col) { ctx.fillStyle = col; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); },
+      row(x1, x2, y, col) { ctx.fillStyle = col; ctx.fillRect(x1, y, x2 - x1 + 1, 1); },
+      rect(x, y, w, h, col) { ctx.fillStyle = col; ctx.fillRect(x, y, w, h); },
+    },
+    { state: 'IDLE', time: 0, squash: 0, blink: false, eyeOffsetX: 0, eyeOffsetY: 0, leftPaw: 'up', rightPaw: 'up' },
+  );
+  return c;
+}
+
+function modelCard(id, name, src, thumb, removable) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'model';
+  card.setAttribute('role', 'radio');
+  card.dataset.id = id;
+  card.append(thumb);
+  const label = document.createElement('div');
+  label.innerHTML = '<div class="name"></div><div class="src"></div>';
+  label.querySelector('.name').textContent = name;
+  label.querySelector('.name').title = name;
+  label.querySelector('.src').textContent = src;
+  card.append(label);
+  card.addEventListener('click', () => patch({ model: id }));
+  if (removable) {
+    const x = document.createElement('span');
+    x.className = 'remove';
+    x.setAttribute('role', 'button');
+    x.title = 'Remove this model';
+    x.textContent = '×';
+    x.style.cssText += 'display:grid;place-items:center;border:1px solid var(--line);cursor:pointer;';
+    x.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Remove "${name}"? Its imported files will be deleted.`)) return;
+      await invoke('remove_model', { id });
+      await loadModels();
+    });
+    card.append(x);
+  }
+  return card;
+}
+
+function renderModels() {
+  const box = $('models');
+  box.replaceChildren();
+  const pix = document.createElement('div');
+  pix.className = 'thumb pixel';
+  pix.append(pixelThumb());
+  box.append(modelCard('pixel', 'Pixel cat', 'Built in', pix, false));
+  for (const m of models) {
+    const t = document.createElement('div');
+    t.className = 'thumb';
+    const img = m.hasCover ? 'resources/cover.png' : m.hasBackground ? 'resources/background.png' : null;
+    if (img) t.style.backgroundImage = `url("${modelUrl(m.id, img)}")`;
+    const src = m.source === 'bongocat' ? 'From BongoCat' : 'Imported';
+    box.append(modelCard(m.id, m.name, src, t, m.source === 'imported'));
+  }
+  $('models-hint').textContent = models.some((m) => m.source === 'bongocat')
+    ? 'BongoCat models are read from your BongoCat install. Keys with no image in a model do not move its paws.'
+    : 'Install BongoCat to use its models here, or import any Live2D (Cubism 3/4) model folder.';
+  markModel();
+}
+
+function markModel() {
+  for (const card of $('models').children) {
+    card.setAttribute('aria-checked', String(card.dataset.id === settings?.model));
+  }
+}
+
+async function loadModels() {
+  models = await invoke('list_models');
+  renderModels();
+}
+
+$('import').addEventListener('click', async () => {
+  try {
+    const m = await invoke('import_model');
+    if (!m) return;
+    await loadModels();
+    await patch({ model: m.id });
+  } catch (e) {
+    alert(String(e));
+  }
+});
+
 function render(s) {
   settings = s;
+  markModel();
   for (const id of TOGGLES) $(id).checked = s[id];
   $('size').value = s.size;
   $('size-out').textContent = `${s.size}%`;
@@ -108,6 +206,7 @@ function draw() {
 
 async function init() {
   render(await invoke('get_settings'));
+  await loadModels();
   $('autostart').checked = await invoke('get_autostart');
   await listen('settings-changed', ({ payload }) => render(payload));
   requestAnimationFrame(draw);

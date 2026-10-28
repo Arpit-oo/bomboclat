@@ -3,3 +3,6 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 *.log
+
+# Live2D Cubism Core is proprietary; fetched by scripts/fetch-cubism-core.mjs
+public/live2dcubismcore.min.js

@@ -8,7 +8,9 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Runtime};
 
-/// Main window size at 100%, in logical pixels.
+use crate::models;
+
+/// Pixel-cat window size at 100%, in logical pixels.
 pub const BASE_W: f64 = 240.0;
 pub const BASE_H: f64 = 220.0;
 
@@ -32,6 +34,8 @@ pub struct Settings {
     pub hide_on_hover: bool,
     /// Idle seconds before the cat falls asleep; 0 = never.
     pub sleep_after_secs: u32,
+    /// `pixel` for the built-in cat, otherwise a Live2D model id.
+    pub model: String,
 }
 
 impl Default for Settings {
@@ -45,6 +49,7 @@ impl Default for Settings {
             key_bubble: false,
             hide_on_hover: false,
             sleep_after_secs: 60,
+            model: models::PIXEL.into(),
         }
     }
 }
@@ -98,7 +103,8 @@ pub fn apply<R: Runtime>(app: &AppHandle<R>, s: &Settings) {
     let _ = w.set_always_on_top(s.always_on_top);
 
     let scale = s.size as f64 / 100.0;
-    let target = LogicalSize::new(BASE_W * scale, BASE_H * scale);
+    let (base_w, base_h) = models::base_size(app, &s.model).unwrap_or((BASE_W, BASE_H));
+    let target = LogicalSize::new(base_w * scale, base_h * scale);
     let (Ok(old), Ok(pos), Ok(dpr)) = (w.outer_size(), w.outer_position(), w.scale_factor()) else {
         let _ = w.set_size(target);
         return;

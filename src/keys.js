@@ -59,3 +59,16 @@ export function comboLabel(heldKeys, key) {
   parts.push(keyLabel(key));
   return parts.join(' + ');
 }
+
+// rdev names that differ from the key image names BongoCat models ship.
+const MODEL_KEY_NAMES = {
+  Alt: 'AltLeft', AltGr: 'AltRight', Return: 'Enter', KpReturn: 'Enter',
+  MetaLeft: 'Meta', MetaRight: 'Meta', Function: 'Fn',
+};
+
+/** Key image name (file stem in a model's left-keys/right-keys) for an rdev key. */
+export function modelKeyName(key) {
+  if (MODEL_KEY_NAMES[key]) return MODEL_KEY_NAMES[key];
+  const kp = key.match(/^Kp(\d)$/);
+  return kp ? `Num${kp[1]}` : key;
+}
