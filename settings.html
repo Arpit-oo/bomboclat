@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bomboclat Settings</title>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <canvas id="preview" width="40" height="40" aria-hidden="true"></canvas>
+      <div>
+        <h1>Bomboclat</h1>
+        <p class="muted">Your desk cat. Changes save as you make them.</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <h2>Appearance</h2>
+      <div class="row">
+        <label for="size">Size</label>
+        <div class="slider">
+          <input id="size" type="range" min="50" max="200" step="25" />
+          <output id="size-out"></output>
+        </div>
+      </div>
+      <div class="row">
+        <label for="opacity">Opacity</label>
+        <div class="slider">
+          <input id="opacity" type="range" min="10" max="100" step="5" />
+          <output id="opacity-out"></output>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="flip">Flip</label>
+          <p class="hint">Mirror the cat to face the other way.</p>
+        </div>
+        <input id="flip" class="switch" type="checkbox" />
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Behaviour</h2>
+      <div class="row">
+        <div>
+          <label for="alwaysOnTop">Always on top</label>
+          <p class="hint">Keep the cat above other windows.</p>
+        </div>
+        <input id="alwaysOnTop" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <div>
+          <label for="clickThrough">Click-through</label>
+          <p class="hint">Clicks pass through the cat. It can't be dragged until you turn this off here or from the tray.</p>
+        </div>
+        <input id="clickThrough" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <div>
+          <label for="hideOnHover">Fade on hover</label>
+          <p class="hint">Turn almost invisible while the cursor is over it. Pairs well with click-through.</p>
+        </div>
+        <input id="hideOnHover" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="sleepAfterSecs">Fall asleep after</label>
+        <select id="sleepAfterSecs">
+          <option value="30">30 seconds</option>
+          <option value="60">1 minute</option>
+          <option value="300">5 minutes</option>
+          <option value="900">15 minutes</option>
+          <option value="0">Never</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Privacy</h2>
+      <div class="row">
+        <div>
+          <label for="keyBubble">Show pressed keys</label>
+          <p class="hint warn">Shows every key you type above the cat, passwords included. Leave off when sharing your screen.</p>
+        </div>
+        <input id="keyBubble" class="switch" type="checkbox" />
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>System</h2>
+      <div class="row">
+        <div>
+          <label for="autostart">Launch at startup</label>
+          <p class="hint">Start Bomboclat when you sign in to Windows.</p>
+        </div>
+        <input id="autostart" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <span class="label">Show / hide cat</span>
+        <span class="keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Alt</kbd><kbd>C</kbd></span>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span class="muted" id="status"></span>
+      <button id="reset" type="button">Reset to defaults</button>
+    </footer>
+  </main>
+  <script type="module" src="/src/settings.js"></script>
+</body>
+</html>

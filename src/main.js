@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { drawScene, CAT_PX_W, CAT_PX_H } from './cat-art.js';
@@ -6,7 +7,9 @@ import { keySide, comboLabel } from './keys.js';
 const PIXEL_SCALE = 4;
 const CAT_W = CAT_PX_W * PIXEL_SCALE;
 const CAT_H = CAT_PX_H * PIXEL_SCALE;
-const SLEEP_AFTER_MS = 60_000;
+// Window size at 100% zoom, in logical pixels. Matches settings.rs.
+const BASE_W = 240;
+const BASE_H = 220;
 // Eye row in art pixels, used as the origin for cursor tracking.
 const EYE_ROW = 12;
 // Top of the ears in art pixels; the key bubble floats above this.
@@ -17,6 +20,16 @@ const MIN_PAW_DOWN_MS = 90;
 const STUCK_KEY_MS = 30_000;
 const BUBBLE_MS = 1200;
 const BUBBLE_FADE_MS = 300;
+// Opacity while the cursor is over the cat with hide-on-hover on.
+const HOVER_ALPHA = 0.12;
+
+let settings = {
+  opacity: 100,
+  flip: false,
+  keyBubble: false,
+  hideOnHover: false,
+  sleepAfterSecs: 60,
+};
 
 const appWindow = getCurrentWindow();
 const canvas = document.getElementById('cat');
@@ -60,16 +73,21 @@ const bubble = { text: '', until: 0 };
 
 // Window geometry in physical pixels, kept current for cursor math.
 const win = { x: 0, y: 0, scale: 1 };
+// Drawing happens in BASE_W x BASE_H units scaled by zoom, so resizing the
+// window from the size setting scales the whole scene.
+let zoom = 1;
+const hover = { inside: false, alpha: 1 };
 
 function catOrigin() {
-  return { x: window.innerWidth / 2, y: window.innerHeight };
+  return { x: BASE_W / 2, y: BASE_H };
 }
 
 function resizeCanvas() {
   const dpr = window.devicePixelRatio;
+  zoom = window.innerWidth / BASE_W;
   canvas.width = window.innerWidth * dpr;
   canvas.height = window.innerHeight * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, 0, 0);
 }
 
 function wake() {
@@ -79,9 +97,12 @@ function wake() {
 
 function onCursor({ x, y }) {
   const o = catOrigin();
-  const eyeX = win.x + o.x * win.scale;
-  const eyeY = win.y + (o.y - CAT_H + EYE_ROW * PIXEL_SCALE) * win.scale;
-  const range = 200 * win.scale;
+  const k = zoom * win.scale;
+  hover.inside =
+    x >= win.x && x < win.x + BASE_W * k && y >= win.y && y < win.y + BASE_H * k;
+  const eyeX = win.x + o.x * k;
+  const eyeY = win.y + (o.y - CAT_H + EYE_ROW * PIXEL_SCALE) * k;
+  const range = 200 * k;
   cat.eyeOffsetX = Math.max(-1, Math.min(1, (x - eyeX) / range));
   cat.eyeOffsetY = Math.max(-1, Math.min(1, (y - eyeY) / range));
 }
@@ -104,7 +125,7 @@ function onInput(e) {
     case 'keyDown': {
       const repeat = held.has(e.key);
       press(e.key, keySide(e.key));
-      if (!repeat) {
+      if (!repeat && settings.keyBubble) {
         bubble.text = comboLabel(held.keys(), e.key);
         bubble.until = Date.now() + BUBBLE_MS;
       }
@@ -162,25 +183,30 @@ function drawBubble(now) {
 
 function render() {
   const now = Date.now();
-  if (cat.state !== 'SLEEP' && now - cat.lastInput > SLEEP_AFTER_MS) cat.state = 'SLEEP';
+  const sleepMs = settings.sleepAfterSecs * 1000;
+  if (cat.state !== 'SLEEP' && sleepMs > 0 && now - cat.lastInput > sleepMs) cat.state = 'SLEEP';
+  if (cat.state === 'SLEEP' && sleepMs === 0) cat.state = 'IDLE';
+  tickOpacity();
   cat.squash = Math.max(0, cat.squash - 0.08);
   tickBlink(now);
 
   px.clearRect(0, 0, CAT_PX_W, CAT_PX_H);
   drawScene(plotter, {
     ...cat,
+    // The art is mirrored when flipped, so mirror where the eyes look too.
+    eyeOffsetX: settings.flip ? -cat.eyeOffsetX : cat.eyeOffsetX,
     time: now,
     blink: now < cat.blinkUntil,
-    leftPaw: pawState('left', now),
-    rightPaw: pawState('right', now),
+    leftPaw: pawState(settings.flip ? 'right' : 'left', now),
+    rightPaw: pawState(settings.flip ? 'left' : 'right', now),
   });
 
-  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  ctx.clearRect(0, 0, BASE_W, BASE_H);
   const o = catOrigin();
   ctx.save();
   ctx.translate(o.x, o.y);
   // Squash only the cat's height a touch; the desk is part of the image so keep it subtle.
-  ctx.scale(1 + cat.squash * 0.02, 1 - cat.squash * 0.03);
+  ctx.scale((settings.flip ? -1 : 1) * (1 + cat.squash * 0.02), 1 - cat.squash * 0.03);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(pxCanvas, -CAT_W / 2, -CAT_H, CAT_W, CAT_H);
   ctx.restore();
@@ -190,7 +216,8 @@ function render() {
     ctx.font = `bold ${12 + count * 2}px Consolas, monospace`;
     ctx.fillStyle = 'rgba(120,120,255,0.9)';
     ctx.textAlign = 'center';
-    ctx.fillText('z'.repeat(count), o.x + 52, o.y - CAT_H + 10 - count * 4);
+    const zx = settings.flip ? o.x - 52 : o.x + 52;
+    ctx.fillText('z'.repeat(count), zx, o.y - CAT_H + 10 - count * 4);
   }
 
   drawBubble(now);
@@ -200,6 +227,20 @@ function render() {
 canvas.addEventListener('mousedown', (e) => {
   if (e.button === 0) appWindow.startDragging();
 });
+
+function tickOpacity() {
+  const base = settings.opacity / 100;
+  const target = settings.hideOnHover && hover.inside ? Math.min(base, HOVER_ALPHA) : base;
+  hover.alpha += (target - hover.alpha) * 0.2;
+  if (Math.abs(target - hover.alpha) < 0.005) hover.alpha = target;
+  canvas.style.opacity = hover.alpha.toFixed(3);
+}
+
+function applySettings(next) {
+  settings = next;
+  if (!settings.keyBubble) bubble.until = 0;
+  wake();
+}
 
 async function syncGeometry() {
   const pos = await appWindow.outerPosition();
@@ -221,6 +262,9 @@ async function init() {
   });
   await listen('cursor', ({ payload }) => onCursor(payload));
   await listen('input', ({ payload }) => onInput(payload));
+  await listen('settings-changed', ({ payload }) => applySettings(payload));
+  applySettings(await invoke('get_settings'));
+  hover.alpha = settings.opacity / 100;
   requestAnimationFrame(render);
 }
 
