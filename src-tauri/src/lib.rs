@@ -56,6 +56,7 @@ pub fn run() {
             settings::update_settings,
             settings::reset_settings,
             tray::get_autostart,
+            tray::show_menu,
             tray::set_autostart_cmd,
             frontend_log,
             models::list_models,

@@ -17,13 +17,28 @@ pub struct TrayItems<R: Runtime> {
     focus: MenuItem<R>,
     sizes: Vec<(u32, CheckMenuItem<R>)>,
     opacities: Vec<(u32, CheckMenuItem<R>)>,
+    /// Shared by the tray icon and the right-click menu on the cat; the
+    /// tray's menu handler is global, so both route through `on_menu`.
+    menu: Menu<R>,
+}
+
+/// Menu items before the menu exists; becomes [`TrayItems`].
+struct Items<R: Runtime> {
+    show: CheckMenuItem<R>,
+    click_through: CheckMenuItem<R>,
+    on_top: CheckMenuItem<R>,
+    flip: CheckMenuItem<R>,
+    autostart: CheckMenuItem<R>,
+    focus: MenuItem<R>,
+    sizes: Vec<(u32, CheckMenuItem<R>)>,
+    opacities: Vec<(u32, CheckMenuItem<R>)>,
 }
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let s = settings::current(app);
     let check = |id: &str, text: &str, on: bool| CheckMenuItem::with_id(app, id, text, true, on, None::<&str>);
 
-    let items = TrayItems {
+    let items = Items {
         show: check("show", "Show cat", true)?,
         click_through: check("click_through", "Click-through", s.click_through)?,
         on_top: check("on_top", "Always on top", s.always_on_top)?,
@@ -51,6 +66,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let menu = Menu::with_items(
         app,
         &[
+            &settings_item,
+            &sep()?,
             &items.show,
             &sep()?,
             &items.click_through,
@@ -62,7 +79,6 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             &items.focus,
             &sep()?,
             &items.autostart,
-            &settings_item,
             &sep()?,
             &quit,
         ],
@@ -88,7 +104,17 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     }
     tray.build(app)?;
 
-    app.manage(items);
+    app.manage(TrayItems {
+        show: items.show,
+        click_through: items.click_through,
+        on_top: items.on_top,
+        flip: items.flip,
+        autostart: items.autostart,
+        focus: items.focus,
+        sizes: items.sizes,
+        opacities: items.opacities,
+        menu,
+    });
     Ok(())
 }
 
@@ -204,6 +230,16 @@ fn set_autostart<R: Runtime>(app: &AppHandle<R>, on: bool) {
     }
     if let Some(items) = app.try_state::<TrayItems<R>>() {
         let _ = items.autostart.set_checked(autostart_enabled(app));
+    }
+}
+
+/// Right-click on the cat: the tray menu, at the cursor.
+#[tauri::command]
+pub fn show_menu(app: AppHandle, window: tauri::WebviewWindow) {
+    if let Some(items) = app.try_state::<TrayItems<tauri::Wry>>() {
+        if let Err(e) = window.popup_menu(&items.menu) {
+            eprintln!("[tray] context menu failed: {e}");
+        }
     }
 }
 

@@ -119,6 +119,9 @@ export async function createBubbles(initialSettings, onReact = () => {}) {
     pomo.classList.add('on');
   });
 
+  // Show the pinned note straight away, not only after the first event.
+  refresh();
+
   return {
     applySettings(next) {
       settings = next;

@@ -10,6 +10,13 @@ function report(msg) {
 window.addEventListener('error', (e) => report(`${e.message} @ ${e.filename}:${e.lineno}`));
 window.addEventListener('unhandledrejection', (e) => report(e.reason?.stack || e.reason));
 
+// Right-click the cat for the tray menu (Settings, size, quit, ...) instead
+// of the webview's own Reload/Inspect menu.
+window.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  invoke('show_menu').catch((err) => report(`[menu] ${err}`));
+});
+
 async function boot() {
   const settings = await invoke('get_settings');
   await listen('settings-changed', ({ payload }) => {
