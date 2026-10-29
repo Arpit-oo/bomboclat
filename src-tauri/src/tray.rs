@@ -59,6 +59,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let opacity_items: Vec<_> = items.opacities.iter().map(|(_, i)| i as &dyn tauri::menu::IsMenuItem<R>).collect();
     let size_menu = Submenu::with_items(app, "Size", true, &size_items)?;
     let opacity_menu = Submenu::with_items(app, "Opacity", true, &opacity_items)?;
+    let sessions_item = MenuItem::with_id(app, "sessions", "Claude sessions…", true, None::<&str>)?;
+    let terminal_item = MenuItem::with_id(app, "terminal", "Open terminal", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Bomboclat", true, None::<&str>)?;
     let sep = || PredefinedMenuItem::separator(app);
@@ -66,6 +68,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let menu = Menu::with_items(
         app,
         &[
+            &sessions_item,
+            &terminal_item,
+            &sep()?,
             &settings_item,
             &sep()?,
             &items.show,
@@ -124,6 +129,8 @@ fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
         "show" => return toggle_visible(app),
         "autostart" => return set_autostart(app, !autostart_enabled(app)),
         "settings" => return open_settings(app),
+        "sessions" => return open_sessions(app),
+        "terminal" => return crate::terminal::open_latest(app),
         "quit" => return app.exit(0),
         "focus" => {
             return if crate::reminders::focus_running(app) {
@@ -172,12 +179,15 @@ pub fn set_focus_running<R: Runtime>(app: &AppHandle<R>, running: bool) {
     }
 }
 
-pub fn set_agent_tooltip<R: Runtime>(app: &AppHandle<R>, working: usize) {
-    let tip = match working {
-        0 => "Bomboclat".to_string(),
-        1 => "Bomboclat · 1 agent working".to_string(),
-        n => format!("Bomboclat · {n} agents working"),
-    };
+pub fn set_agent_tooltip<R: Runtime>(app: &AppHandle<R>, working: usize, input: usize) {
+    let mut parts = Vec::new();
+    if input > 0 {
+        parts.push(format!("{input} waiting for you"));
+    }
+    if working > 0 {
+        parts.push(format!("{working} working"));
+    }
+    let tip = if parts.is_empty() { "Bomboclat".to_string() } else { format!("Bomboclat · {}", parts.join(", ")) };
     if let Some(tray) = app.tray_by_id("main") {
         let _ = tray.set_tooltip(Some(tip));
     }
@@ -216,6 +226,29 @@ pub fn open_settings<R: Runtime>(app: &AppHandle<R>) {
     if let Err(e) = built {
         eprintln!("[tray] settings window failed: {e}");
     }
+}
+
+pub fn open_sessions<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(w) = app.get_webview_window("sessions") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        return;
+    }
+    let built = WebviewWindowBuilder::new(app, "sessions", WebviewUrl::App("sessions.html".into()))
+        .title("Bomboclat · Claude sessions")
+        .inner_size(980.0, 640.0)
+        .min_inner_size(640.0, 420.0)
+        .center()
+        .build();
+    if let Err(e) = built {
+        eprintln!("[tray] sessions window failed: {e}");
+    }
+}
+
+#[tauri::command]
+pub fn open_sessions_window(app: AppHandle) {
+    open_sessions(&app);
 }
 
 fn autostart_enabled<R: Runtime>(app: &AppHandle<R>) -> bool {
