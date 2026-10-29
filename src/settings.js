@@ -5,7 +5,10 @@ import { listen } from '@tauri-apps/api/event';
 import { drawScene, CAT_PX_W, CAT_PX_H } from './cat-art.js';
 
 const $ = (id) => document.getElementById(id);
-const TOGGLES = ['flip', 'alwaysOnTop', 'clickThrough', 'hideOnHover', 'keyBubble'];
+const TOGGLES = ['flip', 'alwaysOnTop', 'clickThrough', 'hideOnHover', 'keyBubble', 'agentWatch', 'agentBubbles', 'sounds'];
+const TEXTS = ['userName', 'pinnedMessage'];
+const SELECTS = ['sleepAfterSecs', 'stretchMins', 'waterMins'];
+const NUMBERS = ['pomodoroFocusMins', 'pomodoroBreakMins'];
 
 let settings = null;
 let models = [];
@@ -126,8 +129,53 @@ function render(s) {
   $('size-out').textContent = `${s.size}%`;
   $('opacity').value = s.opacity;
   $('opacity-out').textContent = `${s.opacity}%`;
-  $('sleepAfterSecs').value = String(s.sleepAfterSecs);
+  for (const id of SELECTS) $(id).value = String(s[id]);
+  // Don't clobber a field while the user is typing in it.
+  for (const id of [...TEXTS, ...NUMBERS]) if (document.activeElement !== $(id)) $(id).value = s[id];
+  if (!$('reminders').contains(document.activeElement)) renderReminders(s.reminders);
 }
+
+function renderReminders(list) {
+  const box = $('reminders');
+  box.replaceChildren();
+  list.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'reminder';
+    const time = Object.assign(document.createElement('input'), { type: 'time', value: r.time });
+    time.setAttribute('aria-label', 'Time');
+    const text = Object.assign(document.createElement('input'), {
+      type: 'text', className: 'text', value: r.message, maxLength: 80, placeholder: 'Message',
+    });
+    text.setAttribute('aria-label', 'Message');
+    const del = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Remove' });
+    const save = () => {
+      const next = settings.reminders.map((x) => ({ ...x }));
+      next[i] = { time: time.value || r.time, message: text.value };
+      patch({ reminders: next });
+    };
+    time.addEventListener('change', save);
+    text.addEventListener('change', save);
+    del.addEventListener('click', () => patch({ reminders: settings.reminders.filter((_, j) => j !== i) }));
+    row.append(time, text, del);
+    box.append(row);
+  });
+}
+
+$('addReminder').addEventListener('click', async () => {
+  await patch({ reminders: [...settings.reminders, { time: '12:00', message: 'Lunch time!' }] });
+  $('reminders').lastElementChild?.querySelector('input.text')?.focus();
+});
+
+for (const id of TEXTS) $(id).addEventListener('change', (e) => patch({ [id]: e.target.value }));
+for (const id of NUMBERS) {
+  $(id).addEventListener('change', (e) => patch({ [id]: Number(e.target.value) || settings[id] }));
+}
+$('stretchMins').addEventListener('change', (e) => patch({ stretchMins: Number(e.target.value) }));
+$('waterMins').addEventListener('change', (e) => patch({ waterMins: Number(e.target.value) }));
+$('testBubble').addEventListener('click', () => invoke('test_bubble'));
+
+let focusRunning = false;
+$('focus').addEventListener('click', () => invoke(focusRunning ? 'stop_focus_cmd' : 'start_focus_cmd'));
 
 for (const id of TOGGLES) {
   $(id).addEventListener('change', (e) => patch({ [id]: e.target.checked }));
@@ -209,6 +257,10 @@ async function init() {
   await loadModels();
   $('autostart').checked = await invoke('get_autostart');
   await listen('settings-changed', ({ payload }) => render(payload));
+  await listen('pomodoro', ({ payload }) => {
+    focusRunning = !!payload.phase;
+    $('focus').textContent = focusRunning ? 'Stop' : 'Start';
+  });
   requestAnimationFrame(draw);
 }
 

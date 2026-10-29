@@ -2,6 +2,7 @@ import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { drawScene, CAT_PX_W, CAT_PX_H } from './cat-art.js';
 import { keySide, comboLabel } from './keys.js';
+import { createBubbles } from './bubble.js';
 
 const PIXEL_SCALE = 4;
 const CAT_W = CAT_PX_W * PIXEL_SCALE;
@@ -21,6 +22,10 @@ const BUBBLE_MS = 1200;
 const BUBBLE_FADE_MS = 300;
 // Opacity while the cursor is over the cat with hide-on-hover on.
 const HOVER_ALPHA = 0.12;
+// Happy hop when an agent finishes: this many hops over HOP_MS.
+const HOPS = 2;
+const HOP_MS = 700;
+const HOP_PX = 12;
 
 let settings = {
   opacity: 100,
@@ -69,6 +74,8 @@ const held = new Map();
 const pawUntil = { left: 0, right: 0 };
 let spaceSide = 'left';
 const bubble = { text: '', until: 0 };
+let bubbles = null;
+let hopStart = 0;
 
 // Window geometry in physical pixels, kept current for cursor math.
 const win = { x: 0, y: 0, scale: 1 };
@@ -159,7 +166,7 @@ function tickBlink(now) {
 }
 
 function drawBubble(now) {
-  if (now >= bubble.until || !bubble.text) return;
+  if (now >= bubble.until || !bubble.text || bubbles?.speaking) return;
   const o = catOrigin();
   const left = bubble.until - now;
   ctx.globalAlpha = left < BUBBLE_FADE_MS ? left / BUBBLE_FADE_MS : 1;
@@ -183,6 +190,8 @@ function drawBubble(now) {
 function render() {
   const now = Date.now();
   const sleepMs = settings.sleepAfterSecs * 1000;
+  // A cat watching an agent work doesn't nod off.
+  if (bubbles?.thinking) cat.lastInput = now;
   if (cat.state !== 'SLEEP' && sleepMs > 0 && now - cat.lastInput > sleepMs) cat.state = 'SLEEP';
   if (cat.state === 'SLEEP' && sleepMs === 0) cat.state = 'IDLE';
   tickOpacity();
@@ -203,7 +212,9 @@ function render() {
   ctx.clearRect(0, 0, BASE_W, BASE_H);
   const o = catOrigin();
   ctx.save();
-  ctx.translate(o.x, o.y);
+  const hopT = (now - hopStart) / HOP_MS;
+  const hop = hopT >= 0 && hopT < 1 ? Math.abs(Math.sin(hopT * Math.PI * HOPS)) * HOP_PX : 0;
+  ctx.translate(o.x, o.y - hop);
   // Squash only the cat's height a touch; the desk is part of the image so keep it subtle.
   ctx.scale((settings.flip ? -1 : 1) * (1 + cat.squash * 0.02), 1 - cat.squash * 0.03);
   ctx.imageSmoothingEnabled = false;
@@ -235,8 +246,14 @@ function tickOpacity() {
   canvas.style.opacity = hover.alpha.toFixed(3);
 }
 
+function react(kind) {
+  wake();
+  if (kind === 'done') hopStart = Date.now();
+}
+
 function applySettings(next) {
   settings = next;
+  bubbles?.applySettings(next);
   if (!settings.keyBubble) bubble.until = 0;
   wake();
 }
@@ -264,6 +281,7 @@ export async function start(initialSettings) {
   await listen('cursor', ({ payload }) => onCursor(payload));
   await listen('input', ({ payload }) => onInput(payload));
   await listen('settings-changed', ({ payload }) => applySettings(payload));
+  bubbles = await createBubbles(settings, react);
   hover.alpha = settings.opacity / 100;
   requestAnimationFrame(render);
 }

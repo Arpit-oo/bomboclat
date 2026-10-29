@@ -17,6 +17,16 @@ every key and mouse button you press. Inspired by [BongoCat](https://github.com/
 
 Settings live in `%APPDATA%\com.arpit.bomboclat\settings.json`.
 
+## AI agents, reminders, focus timer
+
+- **Agent watcher**: while Claude Code or Codex works in any terminal, a little `...` thought
+  bubble shows; when a turn finishes the cat hops (Live2D models play their motion) and says
+  e.g. *"Arpit, Claude finished in bomboclat!"*. It only reads the session logs in
+  `~/.claude/projects` and `~/.codex/sessions`; nothing is sent anywhere or launched.
+- **Reminders**: stretch / water nudges on an interval, plus daily reminders at a set time.
+- **Focus timer**: pomodoro (25/5 by default) from the tray or Settings, with a countdown on the cat.
+- **Pinned note** that always sits above the cat, your name in messages, optional chime.
+
 ## Live2D models (BongoCat style)
 
 Besides the pixel cat, Bomboclat runs BongoCat-format Live2D models: a background,
@@ -63,5 +73,5 @@ npx tauri icon app-icon.png
 - [x] Phase 2: Desk + slamming paws per key side, pressed-key bubble, sleep/wake
 - [x] Phase 3: Tray, settings window, persistence, global shortcut, autostart
 - [x] Phase 4: BongoCat-style Live2D models (BongoCat's own + imported), `run.bat`
-- [ ] Phase 5: Claude Code agent watcher, reminders, speech bubbles
+- [x] Phase 5: Claude Code / Codex watcher, reminders, focus timer, speech bubbles
 - [ ] Phase 6: Packaging, CI, releases

@@ -310,6 +310,7 @@ dependencies = [
 name = "bomboclat"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rdev",
  "serde",
  "serde_json",

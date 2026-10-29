@@ -1,5 +1,7 @@
+mod agents;
 mod input;
 mod models;
+mod reminders;
 mod settings;
 mod tray;
 
@@ -59,6 +61,9 @@ pub fn run() {
             models::list_models,
             models::import_model,
             models::remove_model,
+            reminders::start_focus_cmd,
+            reminders::stop_focus_cmd,
+            reminders::test_bubble,
         ])
         .setup(|app| {
             let handle = app.handle();
@@ -68,12 +73,15 @@ pub fn run() {
                 s.model = models::PIXEL.into();
             }
             app.manage(SettingsState(std::sync::Mutex::new(s.clone())));
+            app.manage(reminders::PomodoroState::default());
             settings::apply(handle, &s);
             tray::build(handle)?;
             if let Err(e) = app.global_shortcut().register(toggle_shortcut()) {
                 eprintln!("[shortcut] register failed: {e}");
             }
             input::spawn(handle.clone());
+            agents::spawn(handle.clone());
+            reminders::spawn(handle.clone());
             if wants_settings(&std::env::args().collect::<Vec<_>>()) {
                 tray::open_settings(handle);
             }

@@ -85,6 +85,87 @@
     </section>
 
     <section class="card">
+      <h2>AI agents</h2>
+      <div class="row">
+        <div>
+          <label for="agentWatch">Watch coding agents</label>
+          <p class="hint">Reads Claude Code and Codex session logs on this PC to know when they're working. Nothing leaves your machine.</p>
+        </div>
+        <input id="agentWatch" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <div>
+          <label for="agentBubbles">Tell me when they finish</label>
+          <p class="hint">The cat hops and says which project is done.</p>
+        </div>
+        <input id="agentBubbles" class="switch" type="checkbox" />
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Messages &amp; reminders</h2>
+      <div class="row">
+        <label for="userName">Your name</label>
+        <input id="userName" class="text" type="text" maxlength="40" placeholder="Optional" />
+      </div>
+      <div class="row">
+        <div>
+          <label for="pinnedMessage">Pinned note</label>
+          <p class="hint">Always shown above the cat.</p>
+        </div>
+        <input id="pinnedMessage" class="text wide" type="text" maxlength="80" placeholder="e.g. Ship it" />
+      </div>
+      <div class="row">
+        <label for="sounds">Sounds</label>
+        <input id="sounds" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <label for="stretchMins">Stretch reminder</label>
+        <select id="stretchMins">
+          <option value="0">Off</option>
+          <option value="30">Every 30 minutes</option>
+          <option value="45">Every 45 minutes</option>
+          <option value="60">Every hour</option>
+          <option value="90">Every 90 minutes</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="waterMins">Water reminder</label>
+        <select id="waterMins">
+          <option value="0">Off</option>
+          <option value="30">Every 30 minutes</option>
+          <option value="60">Every hour</option>
+          <option value="90">Every 90 minutes</option>
+          <option value="120">Every 2 hours</option>
+        </select>
+      </div>
+      <div class="row">
+        <div>
+          <span class="label">Focus timer</span>
+          <p class="hint">Pomodoro: focus, short break, repeat. Also in the tray menu.</p>
+        </div>
+        <div class="inline">
+          <input id="pomodoroFocusMins" class="num" type="number" min="1" max="180" aria-label="Focus minutes" />
+          <span class="muted">/</span>
+          <input id="pomodoroBreakMins" class="num" type="number" min="1" max="60" aria-label="Break minutes" />
+          <span class="muted">min</span>
+          <button id="focus" type="button" class="small">Start</button>
+        </div>
+      </div>
+      <div class="row column">
+        <div class="card-head">
+          <span class="label">Daily reminders</span>
+          <button id="addReminder" type="button" class="small">Add reminder</button>
+        </div>
+        <div id="reminders" class="reminders"></div>
+      </div>
+      <div class="row">
+        <span class="hint">See how messages look on the cat.</span>
+        <button id="testBubble" type="button" class="small">Preview message</button>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Privacy</h2>
       <div class="row">
         <div>

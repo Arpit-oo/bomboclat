@@ -5,6 +5,7 @@ import * as PIXI from 'pixi.js';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow, currentMonitor } from '@tauri-apps/api/window';
 import { modelKeyName } from './keys.js';
+import { createBubbles } from './bubble.js';
 
 const CORE_SRC = '/live2dcubismcore.min.js';
 // Quick taps still show the paw down for at least this long.
@@ -42,7 +43,7 @@ export async function start(initialSettings, info) {
   await loadCore();
   // pixi-live2d-display looks for PIXI on window.
   window.PIXI = PIXI;
-  const { Live2DModel } = await import('pixi-live2d-display/cubism4');
+  const { Live2DModel, SoundManager } = await import('pixi-live2d-display/cubism4');
   Live2DModel.registerTicker(PIXI.Ticker);
 
   let settings = initialSettings;
@@ -172,8 +173,17 @@ export async function start(initialSettings, info) {
   }
 
   let alpha = settings.opacity / 100;
+  let bubbles = null;
+  // Models ship their own happy motion (BongoCat: CAT_motion, with a sound).
+  const motions = model.internalModel.settings.motions ?? {};
+  const doneMotion = ['CAT_motion', 'Tap', 'tap_body', 'TapBody'].find((g) => motions[g]?.length);
+  function react(kind) {
+    if (kind === 'done' && doneMotion) model.motion(doneMotion);
+  }
   function applySettings(next) {
     settings = next;
+    SoundManager.volume = settings.sounds ? 0.5 : 0;
+    bubbles?.applySettings(next);
     stage.style.transform = settings.flip ? 'scaleX(-1)' : '';
   }
   applySettings(settings);
@@ -213,4 +223,5 @@ export async function start(initialSettings, info) {
   await listen('cursor', ({ payload }) => onCursor(payload));
   await listen('input', ({ payload }) => onInput(payload));
   await listen('settings-changed', ({ payload }) => applySettings(payload));
+  bubbles = await createBubbles(settings, react);
 }
