@@ -72,6 +72,7 @@ function modelCard(id, name, src, thumb, removable) {
       if (!confirm(`Remove "${name}"? Its imported files will be deleted.`)) return;
       await invoke('remove_model', { id });
       await loadModels();
+  await refreshHook();
     });
     card.append(x);
   }
@@ -173,6 +174,27 @@ for (const id of NUMBERS) {
 $('stretchMins').addEventListener('change', (e) => patch({ stretchMins: Number(e.target.value) }));
 $('waterMins').addEventListener('change', (e) => patch({ waterMins: Number(e.target.value) }));
 $('testBubble').addEventListener('click', () => invoke('test_bubble'));
+
+async function refreshHook() {
+  try {
+    const st = await invoke('claude_hook_status');
+    $('claudeHook').checked = st.installed;
+    if (st.stale) $('claudeHookHint').textContent = 'The hook points at another copy of Bomboclat. Toggle off and on to repair it.';
+  } catch {
+    $('claudeHook').disabled = true;
+  }
+}
+
+$('claudeHook').addEventListener('change', async (e) => {
+  try {
+    await invoke('set_claude_hook', { on: e.target.checked });
+    showSaved();
+  } catch (err) {
+    alert(String(err));
+  }
+  refreshHook();
+});
+$('openSessions').addEventListener('click', () => invoke('open_sessions_window'));
 
 let focusRunning = false;
 $('focus').addEventListener('click', () => invoke(focusRunning ? 'stop_focus_cmd' : 'start_focus_cmd'));

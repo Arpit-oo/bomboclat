@@ -88,6 +88,7 @@ label, .label { font-weight: 600; }
 }
 
 .hint.warn { color: var(--warn); }
+.hint code { font-size: 12px; color: var(--text); }
 
 .slider {
   display: flex;

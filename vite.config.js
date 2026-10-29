@@ -7,6 +7,6 @@ export default defineConfig({
     target: 'es2021',
     outDir: 'dist',
     emptyOutDir: true,
-    rollupOptions: { input: { main: 'index.html', settings: 'settings.html' } },
+    rollupOptions: { input: { main: 'index.html', settings: 'settings.html', sessions: 'sessions.html' } },
   },
 });

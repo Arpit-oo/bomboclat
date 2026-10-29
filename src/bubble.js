@@ -1,6 +1,7 @@
 // Speech bubbles shared by both renderers: one-off messages (reminders, agent
 // done), a pinned note, a "..." thought while an agent works, and the pomodoro
 // countdown. Pure DOM on top of the scene, so it works for pixel and Live2D.
+import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import './bubble.css';
 
@@ -39,10 +40,19 @@ function chime() {
   }
 }
 
+const hi = (name) => (name ? `${name}, ` : '');
+const where = (e) => (e.project ? ` in ${e.project}` : '');
+
 export function agentDoneText(e, name) {
+  return `${hi(name)}code is done${where(e)}!`;
+}
+
+export function agentInputText(e, name) {
   const who = AGENT_NAMES[e.agent] ?? 'Your agent';
-  const where = e.project ? ` in ${e.project}` : '';
-  return `${name ? `${name}, ` : ''}${who} finished${where}!`;
+  // Hook messages already read "Claude needs your permission to use Bash".
+  if (e.detail?.startsWith(`${who} `)) return `${hi(name)}${e.detail}${where(e)}`;
+  const what = e.detail ? `: ${e.detail}` : '';
+  return `${hi(name)}${who} needs you${where(e)}${what}`;
 }
 
 /**
@@ -56,14 +66,16 @@ export async function createBubbles(initialSettings, onReact = () => {}) {
   const pinned = el('bubble pinned');
   const think = el('think');
   think.append(el('dot'), el('dot'), el('dot'));
+  const ask = el('ask', '?');
   const pomo = el('pomo');
-  root.append(pinned, msg, think, pomo);
+  root.append(pinned, msg, think, ask, pomo);
   document.body.appendChild(root);
 
   const queue = [];
   let current = null;
   let hideTimer = 0;
   let working = 0;
+  let waiting = 0;
 
   function next() {
     current = queue.shift() ?? null;
@@ -88,7 +100,9 @@ export async function createBubbles(initialSettings, onReact = () => {}) {
     const note = settings.pinnedMessage?.trim();
     pinned.textContent = note ?? '';
     pinned.classList.toggle('on', !!note && !current);
-    think.classList.toggle('on', working > 0 && !current);
+    // A session waiting on you outranks ones that are busy.
+    ask.classList.toggle('on', waiting > 0 && !current);
+    think.classList.toggle('on', working > 0 && waiting === 0 && !current);
   }
 
   // Click a message to dismiss it early.
@@ -102,8 +116,13 @@ export async function createBubbles(initialSettings, onReact = () => {}) {
     onReact('done', payload);
     if (settings.agentBubbles) say(agentDoneText(payload, settings.userName?.trim()));
   });
+  await listen('agent-input', ({ payload }) => {
+    onReact('message', payload);
+    if (settings.agentBubbles) say(agentInputText(payload, settings.userName?.trim()));
+  });
   await listen('agents', ({ payload }) => {
     working = settings.agentWatch ? payload.working : 0;
+    waiting = settings.agentWatch ? payload.input : 0;
     if (working > 0) onReact('working');
     refresh();
   });
@@ -119,13 +138,23 @@ export async function createBubbles(initialSettings, onReact = () => {}) {
     pomo.classList.add('on');
   });
 
-  // Show the pinned note straight away, not only after the first event.
+  // The watcher's first status can go out before this page listens, so ask
+  // for the current sessions too. Also shows the pinned note straight away.
+  try {
+    const list = await invoke('list_sessions');
+    if (settings.agentWatch) {
+      working = list.filter((s) => s.state === 'working').length;
+      waiting = list.filter((s) => s.state === 'input').length;
+    }
+  } catch {
+    // Older backend or watcher not ready: events will catch up.
+  }
   refresh();
 
   return {
     applySettings(next) {
       settings = next;
-      if (!settings.agentWatch) working = 0;
+      if (!settings.agentWatch) working = waiting = 0;
       refresh();
     },
     /** True while a message bubble is up (renderers hide their own text then). */

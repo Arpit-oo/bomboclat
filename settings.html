@@ -95,10 +95,21 @@
       </div>
       <div class="row">
         <div>
-          <label for="agentBubbles">Tell me when they finish</label>
-          <p class="hint">The cat hops and says which project is done.</p>
+          <label for="agentBubbles">Talk to me</label>
+          <p class="hint">Says when a session needs you (and what it's asking) and when its code is done.</p>
         </div>
         <input id="agentBubbles" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <div>
+          <label for="claudeHook">Precise permission alerts</label>
+          <p class="hint" id="claudeHookHint">Permission prompts ("Allow Bash?") aren't in Claude's logs. This adds one Notification hook to <code>~/.claude/settings.json</code> (backed up first) so the cat sees them.</p>
+        </div>
+        <input id="claudeHook" class="switch" type="checkbox" />
+      </div>
+      <div class="row">
+        <span class="hint">Every session, what it's doing, and a terminal for each.</span>
+        <button id="openSessions" type="button" class="small">View sessions</button>
       </div>
     </section>
 

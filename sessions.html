@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bomboclat · Claude sessions</title>
+</head>
+<body>
+  <main class="term">
+    <header class="bar">
+      <div class="prompt">
+        <span class="user">bomboclat</span><span class="sep">:</span><span class="path">~/sessions</span><span class="dollar">$</span>
+        <span class="cmd">watch claude</span><span class="cursor" aria-hidden="true"></span>
+      </div>
+      <div class="actions">
+        <label class="check"><input id="showIdle" type="checkbox" /> show idle</label>
+        <button id="openLatest" type="button">Open terminal</button>
+      </div>
+    </header>
+
+    <section class="summary" id="summary" aria-live="polite"></section>
+
+    <section id="list" class="list" aria-label="Sessions"></section>
+
+    <footer class="foot" id="hookHint" hidden>
+      <span>Permission prompts ("Allow Bash?") aren't written to Claude's logs, so they can only be guessed here.</span>
+      <button id="enableHook" type="button">Enable precise alerts</button>
+    </footer>
+  </main>
+  <script type="module" src="/src/sessions.js"></script>
+</body>
+</html>
