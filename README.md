@@ -23,7 +23,8 @@ Settings live in `%APPDATA%\com.arpit.bomboclat\settings.json`.
   bubble shows; when a turn finishes the cat hops (Live2D models play their motion) and says
   e.g. *"Arpit, Claude finished in bomboclat!"*. It only reads the session logs in
   `~/.claude/projects` and `~/.codex/sessions`; nothing is sent anywhere or launched.
-- **Reminders**: stretch / water nudges on an interval, plus daily reminders at a set time.
+- **Reminders**: water every 30 minutes and a stretch every hour by default (both adjustable or off),
+  paused while you are away from the PC, plus daily reminders at a set time.
 - **Focus timer**: pomodoro (25/5 by default) from the tray or Settings, with a countdown on the cat.
 - **Pinned note** that always sits above the cat, your name in messages, optional chime.
 

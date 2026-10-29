@@ -48,6 +48,9 @@ fn bubble<R: Runtime>(app: &AppHandle<R>, text: String, kind: &'static str) {
     let _ = app.emit("bubble", Bubble { text, kind });
 }
 
+/// No input for this long = away from the PC; nudges wait for you.
+const AWAY_AFTER: Duration = Duration::from_secs(5 * 60);
+
 fn mins(n: u32) -> Duration {
     Duration::from_secs(n as u64 * 60)
 }
@@ -63,8 +66,10 @@ impl Nudge {
         Self { every: 0, since: Instant::now() }
     }
 
-    fn due(&mut self, every: u32, now: Instant) -> bool {
-        if every != self.every {
+    /// `away`: nobody at the keyboard. The countdown restarts then, so you
+    /// don't come back to a nudge for time you spent away.
+    fn due(&mut self, every: u32, now: Instant, away: bool) -> bool {
+        if every != self.every || away {
             self.every = every;
             self.since = now;
         }
@@ -140,10 +145,11 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
         loop {
             let s = settings::current(&app);
             let now = Instant::now();
-            if stretch.due(s.stretch_mins, now) {
+            let away = crate::input::idle_ms() > AWAY_AFTER.as_millis() as u64;
+            if stretch.due(s.stretch_mins, now, away) {
                 bubble(&app, greet("Time to stretch", &s.user_name), "reminder");
             }
-            if water.due(s.water_mins, now) {
+            if water.due(s.water_mins, now, away) {
                 bubble(&app, greet("Drink some water", &s.user_name), "reminder");
             }
 
@@ -195,12 +201,25 @@ mod tests {
     fn nudge_fires_after_interval_and_resets_on_change() {
         let t0 = Instant::now();
         let mut n = Nudge::new();
-        assert!(!n.due(1, t0));
-        assert!(!n.due(1, t0 + Duration::from_secs(59)));
-        assert!(n.due(1, t0 + Duration::from_secs(60)));
-        assert!(!n.due(1, t0 + Duration::from_secs(61)));
+        let s = Duration::from_secs;
+        assert!(!n.due(1, t0, false));
+        assert!(!n.due(1, t0 + s(59), false));
+        assert!(n.due(1, t0 + s(60), false));
+        assert!(!n.due(1, t0 + s(61), false));
         // Interval change restarts the countdown.
-        assert!(!n.due(2, t0 + Duration::from_secs(200)));
-        assert!(!n.due(0, t0 + Duration::from_secs(10_000)));
+        assert!(!n.due(2, t0 + s(200), false));
+        assert!(!n.due(0, t0 + s(10_000), false));
+    }
+
+    #[test]
+    fn nudge_waits_while_away() {
+        let t0 = Instant::now();
+        let s = Duration::from_secs;
+        let mut n = Nudge::new();
+        assert!(!n.due(1, t0, false));
+        // Away past the interval: no nudge, and the countdown restarts.
+        assert!(!n.due(1, t0 + s(90), true));
+        assert!(!n.due(1, t0 + s(120), false));
+        assert!(n.due(1, t0 + s(150), false));
     }
 }

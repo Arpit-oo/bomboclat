@@ -120,20 +120,26 @@
         <input id="sounds" class="switch" type="checkbox" />
       </div>
       <div class="row">
-        <label for="stretchMins">Stretch reminder</label>
+        <div>
+          <label for="stretchMins">Stretch reminder</label>
+          <p class="hint">Reminders pause while you're away from the PC.</p>
+        </div>
         <select id="stretchMins">
           <option value="0">Off</option>
           <option value="30">Every 30 minutes</option>
           <option value="45">Every 45 minutes</option>
           <option value="60">Every hour</option>
           <option value="90">Every 90 minutes</option>
+          <option value="120">Every 2 hours</option>
         </select>
       </div>
       <div class="row">
         <label for="waterMins">Water reminder</label>
         <select id="waterMins">
           <option value="0">Off</option>
+          <option value="20">Every 20 minutes</option>
           <option value="30">Every 30 minutes</option>
+          <option value="45">Every 45 minutes</option>
           <option value="60">Every hour</option>
           <option value="90">Every 90 minutes</option>
           <option value="120">Every 2 hours</option>

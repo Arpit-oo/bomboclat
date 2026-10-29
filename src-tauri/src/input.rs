@@ -23,6 +23,15 @@ pub struct CursorPos {
     pub y: f64,
 }
 
+/// Unix ms of the last key, button or mouse move; reminders pause while
+/// nobody is at the keyboard.
+pub static LAST_INPUT_MS: AtomicU64 = AtomicU64::new(0);
+
+/// Milliseconds since the last input of any kind.
+pub fn idle_ms() -> u64 {
+    now_ms().saturating_sub(LAST_INPUT_MS.load(Ordering::Relaxed))
+}
+
 /// Minimum gap between cursor events sent to the webview (~60 Hz).
 const CURSOR_INTERVAL_MS: u64 = 16;
 
@@ -45,7 +54,9 @@ fn button_name(b: Button) -> String {
 pub fn spawn(app: AppHandle) {
     std::thread::spawn(move || {
         let last_cursor = AtomicU64::new(0);
+        LAST_INPUT_MS.store(now_ms(), Ordering::Relaxed);
         let result = listen(move |event| {
+            LAST_INPUT_MS.store(now_ms(), Ordering::Relaxed);
             let payload = match event.event_type {
                 EventType::KeyPress(k) => InputEvent::KeyDown { key: format!("{k:?}") },
                 EventType::KeyRelease(k) => InputEvent::KeyUp { key: format!("{k:?}") },
