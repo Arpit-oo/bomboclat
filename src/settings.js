@@ -3,6 +3,7 @@ import './settings.css';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { drawScene, CAT_PX_W, CAT_PX_H } from './cat-art.js';
+import { drawCrabScene } from './crab-art.js';
 
 const $ = (id) => document.getElementById(id);
 const TOGGLES = ['flip', 'alwaysOnTop', 'clickThrough', 'hideOnHover', 'keyBubble', 'agentWatch', 'agentBubbles', 'sounds'];
@@ -30,12 +31,12 @@ function modelUrl(id, rel) {
   return `http://bcmodel.localhost/${encodeURIComponent(id)}/${path}`;
 }
 
-function pixelThumb() {
+function pixelThumb(draw) {
   const c = document.createElement('canvas');
   c.width = CAT_PX_W;
   c.height = CAT_PX_H;
   const ctx = c.getContext('2d');
-  drawScene(
+  draw(
     {
       dot(x, y, col) { ctx.fillStyle = col; ctx.fillRect(Math.round(x), Math.round(y), 1, 1); },
       row(x1, x2, y, col) { ctx.fillStyle = col; ctx.fillRect(x1, y, x2 - x1 + 1, 1); },
@@ -82,10 +83,12 @@ function modelCard(id, name, src, thumb, removable) {
 function renderModels() {
   const box = $('models');
   box.replaceChildren();
-  const pix = document.createElement('div');
-  pix.className = 'thumb pixel';
-  pix.append(pixelThumb());
-  box.append(modelCard('pixel', 'Pixel cat', 'Built in', pix, false));
+  for (const [id, name, draw] of [['pixel', 'Pixel cat', drawScene], ['crab', 'Claude crab', drawCrabScene]]) {
+    const pix = document.createElement('div');
+    pix.className = 'thumb pixel';
+    pix.append(pixelThumb(draw));
+    box.append(modelCard(id, name, 'Built in', pix, false));
+  }
   for (const m of models) {
     const t = document.createElement('div');
     t.className = 'thumb';

@@ -35,7 +35,7 @@ events and the pages redraw.
 | `agents.rs` | Session watcher, polled every 700 ms (see below). |
 | `hooks.rs` | Install/remove the Claude Code Notification hook in `~/.claude/settings.json`; the `--hook-event` mode; tailing `claude-events.jsonl`. |
 | `reminders.rs` | 1 s scheduler thread: interval nudges (paused while away), daily `HH:MM` reminders (once per day), pomodoro state machine. |
-| `models.rs` | Lists BongoCat's installed models and imported models; serves their files over `http://bcmodel.localhost/<id>/<path>` with canonical-path checks so nothing outside a model root is readable; import (folder picker, copy) and remove. |
+| `models.rs` | Built-in pixel ids (`pixel`, `crab`). Lists BongoCat's installed models and imported models; serves their files over `http://bcmodel.localhost/<id>/<path>` with canonical-path checks so nothing outside a model root is readable; import (folder picker, copy) and remove. |
 | `tray.rs` | Tray icon and the shared menu (also used as the cat's right-click popup); keeps check items in sync with settings; opens Settings / Sessions windows. |
 | `terminal.rs` | `wt.exe -d <dir>` with a `cmd` fallback. Directories and session ids must come from tracked sessions and are passed as args / working dir, never through a shell string. |
 
@@ -75,7 +75,7 @@ per poll.
 - **`main.js`** reads settings and loads `pixel.js` or `live2d.js` (lazy chunk with pixi). If a
   model fails it falls back to the pixel cat. Changing the model reloads the page. Right-click
   → `show_menu`. Webview errors are mirrored to stderr via `frontend_log`.
-- **`pixel.js`** draws the 40×40 pixel scene (`cat-art.js`) to an offscreen canvas and scales
+- **`pixel.js`** draws the 40×40 pixel scene (`cat-art.js`, or `crab-art.js` for the crab) to an offscreen canvas and scales
   it up with smoothing off.
 - **`live2d.js`** builds background, then the Live2D canvas, then the key-overlay `<img>`
   layers. Parameters are written into the core model in `beforeModelUpdate` so motions,

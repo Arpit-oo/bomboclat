@@ -1,5 +1,5 @@
-// Picks the renderer for the selected model: the built-in pixel cat or a
-// Live2D model. Switching models reloads the page so each renderer starts clean.
+// Picks the renderer for the selected model: a built-in pixel character (cat
+// or Claude crab) or a Live2D model. Switching models reloads the page so each renderer starts clean.
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
@@ -23,7 +23,7 @@ async function boot() {
     if (payload.model !== settings.model) location.reload();
   });
 
-  if (settings.model !== 'pixel') {
+  if (settings.model !== 'pixel' && settings.model !== 'crab') {
     const models = await invoke('list_models');
     const info = models.find((m) => m.id === settings.model);
     if (info) {
