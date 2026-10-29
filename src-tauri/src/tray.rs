@@ -14,6 +14,7 @@ pub struct TrayItems<R: Runtime> {
     on_top: CheckMenuItem<R>,
     flip: CheckMenuItem<R>,
     autostart: CheckMenuItem<R>,
+    focus: MenuItem<R>,
     sizes: Vec<(u32, CheckMenuItem<R>)>,
     opacities: Vec<(u32, CheckMenuItem<R>)>,
 }
@@ -28,6 +29,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         on_top: check("on_top", "Always on top", s.always_on_top)?,
         flip: check("flip", "Flip", s.flip)?,
         autostart: check("autostart", "Launch at startup", autostart_enabled(app))?,
+        focus: MenuItem::with_id(app, "focus", FOCUS_START, true, None::<&str>)?,
         sizes: SIZE_STEPS
             .iter()
             .map(|&n| Ok((n, check(&format!("size:{n}"), &format!("{n}%"), s.size == n)?)))
@@ -56,6 +58,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             &items.flip,
             &size_menu,
             &opacity_menu,
+            &sep()?,
+            &items.focus,
             &sep()?,
             &items.autostart,
             &settings_item,
@@ -95,6 +99,13 @@ fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
         "autostart" => return set_autostart(app, !autostart_enabled(app)),
         "settings" => return open_settings(app),
         "quit" => return app.exit(0),
+        "focus" => {
+            return if crate::reminders::focus_running(app) {
+                crate::reminders::stop_focus(app)
+            } else {
+                crate::reminders::start_focus(app)
+            }
+        }
         "click_through" => json!({ "clickThrough": !s.click_through }),
         "on_top" => json!({ "alwaysOnTop": !s.always_on_top }),
         "flip" => json!({ "flip": !s.flip }),
@@ -123,6 +134,26 @@ pub fn sync<R: Runtime>(app: &AppHandle<R>, s: &Settings) {
     }
     for (n, item) in &items.opacities {
         let _ = item.set_checked(*n == s.opacity);
+    }
+}
+
+const FOCUS_START: &str = "Start focus timer";
+const FOCUS_STOP: &str = "Stop focus timer";
+
+pub fn set_focus_running<R: Runtime>(app: &AppHandle<R>, running: bool) {
+    if let Some(items) = app.try_state::<TrayItems<R>>() {
+        let _ = items.focus.set_text(if running { FOCUS_STOP } else { FOCUS_START });
+    }
+}
+
+pub fn set_agent_tooltip<R: Runtime>(app: &AppHandle<R>, working: usize) {
+    let tip = match working {
+        0 => "Bomboclat".to_string(),
+        1 => "Bomboclat · 1 agent working".to_string(),
+        n => format!("Bomboclat · {n} agents working"),
+    };
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(tip));
     }
 }
 

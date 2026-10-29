@@ -21,6 +21,7 @@ rdev = "0.5"
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-dialog = "2"
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 
 [profile.release]
 codegen-units = 1

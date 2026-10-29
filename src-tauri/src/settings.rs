@@ -36,6 +36,30 @@ pub struct Settings {
     pub sleep_after_secs: u32,
     /// `pixel` for the built-in cat, otherwise a Live2D model id.
     pub model: String,
+    /// Watch Claude Code / Codex session logs.
+    pub agent_watch: bool,
+    /// Say something when an agent finishes.
+    pub agent_bubbles: bool,
+    /// Used in messages ("Time to stretch, Arpit!").
+    pub user_name: String,
+    pub sounds: bool,
+    /// Minutes between nudges; 0 = off.
+    pub stretch_mins: u32,
+    pub water_mins: u32,
+    pub pomodoro_focus_mins: u32,
+    pub pomodoro_break_mins: u32,
+    /// Daily reminders.
+    pub reminders: Vec<Reminder>,
+    /// Always-visible note above the cat; empty = none.
+    pub pinned_message: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Reminder {
+    /// Local time, "HH:MM" (24h).
+    pub time: String,
+    pub message: String,
 }
 
 impl Default for Settings {
@@ -50,6 +74,16 @@ impl Default for Settings {
             hide_on_hover: false,
             sleep_after_secs: 60,
             model: models::PIXEL.into(),
+            agent_watch: true,
+            agent_bubbles: true,
+            user_name: String::new(),
+            sounds: true,
+            stretch_mins: 60,
+            water_mins: 30,
+            pomodoro_focus_mins: 25,
+            pomodoro_break_mins: 5,
+            reminders: Vec::new(),
+            pinned_message: String::new(),
         }
     }
 }
@@ -58,8 +92,20 @@ impl Settings {
     fn clamped(mut self) -> Self {
         self.size = self.size.clamp(50, 300);
         self.opacity = self.opacity.clamp(10, 100);
+        self.pomodoro_focus_mins = self.pomodoro_focus_mins.clamp(1, 180);
+        self.pomodoro_break_mins = self.pomodoro_break_mins.clamp(1, 60);
+        self.reminders.retain(|r| valid_hhmm(&r.time));
+        self.reminders.truncate(50);
         self
     }
+}
+
+fn valid_hhmm(t: &str) -> bool {
+    let b = t.as_bytes();
+    b.len() == 5
+        && b[2] == b':'
+        && t[..2].parse::<u32>().is_ok_and(|h| h < 24)
+        && t[3..].parse::<u32>().is_ok_and(|m| m < 60)
 }
 
 pub struct SettingsState(pub Mutex<Settings>);
