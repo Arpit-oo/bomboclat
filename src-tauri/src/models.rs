@@ -16,6 +16,13 @@ use tauri::{AppHandle, Manager, Runtime};
 
 /// The built-in pixel cat; not a Live2D model.
 pub const PIXEL: &str = "pixel";
+/// The built-in pixel Claude crab; drawn by the same renderer as the cat.
+pub const CRAB: &str = "crab";
+
+/// True for the pixel characters that ship with the app.
+pub fn is_builtin(id: &str) -> bool {
+    id == PIXEL || id == CRAB
+}
 
 /// Live2D window size relative to the model's background image at 100%.
 const MODEL_WINDOW_SCALE: f64 = 0.5;
@@ -159,7 +166,7 @@ pub fn find<R: Runtime>(app: &AppHandle<R>, id: &str) -> Option<ModelInfo> {
 
 /// Window size at 100% for a model, in logical pixels.
 pub fn base_size<R: Runtime>(app: &AppHandle<R>, id: &str) -> Option<(f64, f64)> {
-    if id == PIXEL {
+    if is_builtin(id) {
         return None;
     }
     let m = find(app, id)?;

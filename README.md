@@ -95,6 +95,9 @@ alone, and turning the switch off removes only Bomboclat's entry.
 
 <img src="docs/images/bongocat-standard.png" alt="BongoCat standard model pressing Shift and Z" width="420" align="right" />
 
+Two pixel characters are built in: the **Pixel cat** and the **Claude crab**, an orange crab
+that bongos its claws on the keyboard. Pick either under **Settings → Character**.
+
 If [BongoCat](https://github.com/ayangweb/BongoCat) is installed, its **Standard**, **Keyboard**
 and **Gamepad** models appear under **Settings → Character**. They're read in place from
 `%LOCALAPPDATA%\BongoCat`, never copied.
@@ -203,6 +206,7 @@ and publish.
 ## Roadmap
 
 - [x] Pixel cat, eye tracking, global input hook
+- [x] Claude crab pixel character
 - [x] Desk, bongo paws, key bubble, sleep
 - [x] Tray, settings, persistence, global shortcut, autostart
 - [x] BongoCat-style Live2D models (BongoCat's own + imported)

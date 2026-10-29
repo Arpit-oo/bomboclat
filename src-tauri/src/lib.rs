@@ -91,7 +91,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle();
             let mut s = settings::load(handle);
-            if s.model != models::PIXEL && models::find(handle, &s.model).is_none() {
+            if !models::is_builtin(&s.model) && models::find(handle, &s.model).is_none() {
                 // Model was deleted or BongoCat uninstalled.
                 s.model = models::PIXEL.into();
             }

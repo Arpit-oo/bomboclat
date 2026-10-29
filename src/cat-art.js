@@ -163,7 +163,7 @@ const KB_LIT = '#ffcc44';
 const PAD_PINK = '#e890a8';
 
 /** Desk across the bottom with a keyboard the cat sits behind. */
-function drawDesk(p, state) {
+export function drawDesk(p, state) {
   const cx = 20;
   p.row(0, CAT_PX_W - 1, 30, DESK_TOP);
   p.row(0, CAT_PX_W - 1, 31, DESK);

@@ -34,7 +34,7 @@ pub struct Settings {
     pub hide_on_hover: bool,
     /// Idle seconds before the cat falls asleep; 0 = never.
     pub sleep_after_secs: u32,
-    /// `pixel` for the built-in cat, otherwise a Live2D model id.
+    /// `pixel` / `crab` for the built-in characters, otherwise a Live2D model id.
     pub model: String,
     /// Watch Claude Code / Codex session logs.
     pub agent_watch: bool,
@@ -117,7 +117,7 @@ fn path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
 pub fn load<R: Runtime>(app: &AppHandle<R>) -> Settings {
     path(app)
         .and_then(|p| fs::read_to_string(p).ok())
-        .and_then(|s| serde_json::from_str::<Settings>(&s).ok())
+        .and_then(|s| serde_json::from_str::<Settings>(s.trim_start_matches('\u{feff}')).ok())
         .unwrap_or_default()
         .clamped()
 }

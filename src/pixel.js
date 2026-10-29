@@ -1,6 +1,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { drawScene, CAT_PX_W, CAT_PX_H } from './cat-art.js';
+import { drawCrabScene, CRAB_EYE_ROW, CRAB_HEAD_TOP_ROW } from './crab-art.js';
 import { keySide, comboLabel } from './keys.js';
 import { createBubbles } from './bubble.js';
 
@@ -10,10 +11,13 @@ const CAT_H = CAT_PX_H * PIXEL_SCALE;
 // Window size at 100% zoom, in logical pixels. Matches settings.rs.
 const BASE_W = 240;
 const BASE_H = 220;
-// Eye row in art pixels, used as the origin for cursor tracking.
-const EYE_ROW = 12;
-// Top of the ears in art pixels; the key bubble floats above this.
-const HEAD_TOP_ROW = 2;
+// Built-in pixel characters. eyeRow is the origin for cursor tracking;
+// headTop (art pixels) is where the key bubble floats above.
+const SCENES = {
+  pixel: { draw: drawScene, eyeRow: 12, headTop: 2 },
+  crab: { draw: drawCrabScene, eyeRow: CRAB_EYE_ROW, headTop: CRAB_HEAD_TOP_ROW },
+};
+let scene = SCENES.pixel;
 // Quick taps still show the paw down for at least this long.
 const MIN_PAW_DOWN_MS = 90;
 // Held keys whose release we never saw (e.g. Win+L) are dropped after this.
@@ -107,7 +111,7 @@ function onCursor({ x, y }) {
   hover.inside =
     x >= win.x && x < win.x + BASE_W * k && y >= win.y && y < win.y + BASE_H * k;
   const eyeX = win.x + o.x * k;
-  const eyeY = win.y + (o.y - CAT_H + EYE_ROW * PIXEL_SCALE) * k;
+  const eyeY = win.y + (o.y - CAT_H + scene.eyeRow * PIXEL_SCALE) * k;
   const range = 200 * k;
   cat.eyeOffsetX = Math.max(-1, Math.min(1, (x - eyeX) / range));
   cat.eyeOffsetY = Math.max(-1, Math.min(1, (y - eyeY) / range));
@@ -174,7 +178,7 @@ function drawBubble(now) {
   const w = Math.ceil(ctx.measureText(bubble.text).width) + 16;
   const h = 22;
   const x = Math.round(o.x - w / 2);
-  const y = Math.round(o.y - CAT_H + HEAD_TOP_ROW * PIXEL_SCALE - h - 8);
+  const y = Math.round(o.y - CAT_H + scene.headTop * PIXEL_SCALE - h - 8);
   // Pixel-style box: dark border drawn as a 2px frame, no rounded corners.
   ctx.fillStyle = '#111111';
   ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
@@ -199,7 +203,7 @@ function render() {
   tickBlink(now);
 
   px.clearRect(0, 0, CAT_PX_W, CAT_PX_H);
-  drawScene(plotter, {
+  scene.draw(plotter, {
     ...cat,
     // The art is mirrored when flipped, so mirror where the eyes look too.
     eyeOffsetX: settings.flip ? -cat.eyeOffsetX : cat.eyeOffsetX,
@@ -227,7 +231,7 @@ function render() {
     ctx.fillStyle = 'rgba(120,120,255,0.9)';
     ctx.textAlign = 'center';
     const zx = settings.flip ? o.x - 52 : o.x + 52;
-    ctx.fillText('z'.repeat(count), zx, o.y - CAT_H + 10 - count * 4);
+    ctx.fillText('z'.repeat(count), zx, o.y - CAT_H + 10 + (scene.headTop - 2) * PIXEL_SCALE - count * 4);
   }
 
   drawBubble(now);
@@ -265,8 +269,9 @@ async function syncGeometry() {
   win.scale = await appWindow.scaleFactor();
 }
 
-/** Runs the built-in pixel cat. */
+/** Runs a built-in pixel character: the cat, or the Claude crab. */
 export async function start(initialSettings) {
+  scene = SCENES[initialSettings.model] || SCENES.pixel;
   applySettings(initialSettings);
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
