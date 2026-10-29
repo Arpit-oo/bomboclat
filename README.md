@@ -17,12 +17,34 @@ every key and mouse button you press. Inspired by [BongoCat](https://github.com/
 
 Settings live in `%APPDATA%\com.arpit.bomboclat\settings.json`.
 
+## Live2D models (BongoCat style)
+
+Besides the pixel cat, Bomboclat runs BongoCat-format Live2D models: a background,
+the Live2D model, and one overlay image per key in `resources/left-keys` /
+`resources/right-keys`. Pressing a key slams the paw on the side its image lives in;
+keys with no image don't react. The mouse paw and head follow your cursor.
+
+- **BongoCat models**: if [BongoCat](https://github.com/ayangweb/BongoCat) is installed,
+  its Standard / Keyboard / Gamepad models show up in Settings automatically. They are
+  read from BongoCat's install folder, never copied. Gamepad input is not supported yet.
+- **Your own models**: Settings → Character → *Import Live2D model…* and pick the folder.
+  Any Cubism 3/4 model works; the BongoCat folder layout adds the desk and key overlays.
+  Imported models are copied to `%APPDATA%\com.arpit.bomboclat\models`.
+
+Live2D needs Live2D Cubism Core, which is proprietary and not in this repo.
+`run.bat` (or `npm run setup:live2d`) downloads it into `public/`; by using it you accept the
+[Live2D Proprietary Software License](https://www.live2d.com/eula/live2d-proprietary-software-license-agreement_en.html).
+
 ## Develop
 
 Requires Node 20+, Rust stable and the WebView2 runtime.
 
+Double-click **`run.bat`**: it installs dependencies and Cubism Core on first run, then starts
+the app. Or by hand:
+
 ```sh
 npm install
+npm run setup:live2d
 npm run tauri dev
 ```
 
@@ -40,5 +62,6 @@ npx tauri icon app-icon.png
 - [x] Phase 1: Tauri scaffold, transparent draggable window, pixel cat, global input hook, eye tracking
 - [x] Phase 2: Desk + slamming paws per key side, pressed-key bubble, sleep/wake
 - [x] Phase 3: Tray, settings window, persistence, global shortcut, autostart
-- [ ] Phase 4: Claude Code agent watcher, reminders, speech bubbles
-- [ ] Phase 5: Packaging, CI, releases
+- [x] Phase 4: BongoCat-style Live2D models (BongoCat's own + imported), `run.bat`
+- [ ] Phase 5: Claude Code agent watcher, reminders, speech bubbles
+- [ ] Phase 6: Packaging, CI, releases
