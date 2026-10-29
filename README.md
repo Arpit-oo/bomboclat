@@ -59,7 +59,27 @@ npm run setup:live2d
 npm run tauri dev
 ```
 
-Build an installer with `npm run tauri build`.
+## Build & release
+
+- **Local installer**: double-click **`build.bat`** (or `npm run tauri build`). Output:
+  `src-tauri	argeteleaseundle
+sis\Bomboclat_<version>_x64-setup.exe`. Installs per user,
+  no admin prompt.
+- **Release**: set the version, commit, tag and push. GitHub Actions builds the installer and
+  opens a **draft** release with it attached; review and publish it on GitHub.
+
+  ```sh
+  npm run version:set -- 0.2.0
+  git commit -am "release: v0.2.0"
+  git tag v0.2.0
+  git push && git push --tags
+  ```
+
+- **CI** runs on every PR and push to `master`: frontend build, `cargo clippy -D warnings`, `cargo test`.
+
+The installer isn't code-signed, so SmartScreen warns on first run (*More info → Run anyway*).
+Release builds include Live2D Cubism Core, fetched during the build; distributing it means
+accepting Live2D's license terms (free for individuals and small businesses).
 
 Regenerate the app icon from the pixel art:
 
@@ -75,4 +95,4 @@ npx tauri icon app-icon.png
 - [x] Phase 3: Tray, settings window, persistence, global shortcut, autostart
 - [x] Phase 4: BongoCat-style Live2D models (BongoCat's own + imported), `run.bat`
 - [x] Phase 5: Claude Code / Codex watcher, reminders, focus timer, speech bubbles
-- [ ] Phase 6: Packaging, CI, releases
+- [x] Phase 6: Installer metadata, `build.bat`, version script, CI + tagged draft releases

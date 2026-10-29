@@ -1,0 +1,50 @@
+name: Release
+
+# Push a tag like v0.2.0 to build the installer and open a draft release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      # Proprietary; fetched at build time, never committed. See README.
+      - name: Fetch Live2D Cubism Core
+        run: npm run setup:live2d
+
+      - name: Tests
+        working-directory: src-tauri
+        run: cargo test
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Bomboclat ${{ github.ref_name }}
+          releaseBody: |
+            Windows installer below (`Bomboclat_*_x64-setup.exe`). Installs for the current user, no admin needed.
+
+            The installer is not code-signed yet, so Windows SmartScreen may warn on first run: click **More info → Run anyway**.
+          releaseDraft: true
+          prerelease: false

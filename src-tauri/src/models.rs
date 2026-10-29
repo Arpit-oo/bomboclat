@@ -143,10 +143,8 @@ pub fn list<R: Runtime>(app: &AppHandle<R>) -> Vec<ModelInfo> {
 fn root<R: Runtime>(app: &AppHandle<R>, id: &str) -> Option<PathBuf> {
     let (base, name) = if let Some(n) = id.strip_prefix(BONGOCAT_PREFIX) {
         (bongocat_dir()?, n)
-    } else if let Some(n) = id.strip_prefix(USER_PREFIX) {
-        (user_dir(app)?, n)
     } else {
-        return None;
+        (user_dir(app)?, id.strip_prefix(USER_PREFIX)?)
     };
     if name.is_empty() || name.contains(['/', '\\']) || name == "." || name == ".." {
         return None;
