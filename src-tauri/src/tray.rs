@@ -1,0 +1,188 @@
+//! System tray icon and menu, plus the window/autostart helpers it drives.
+
+use serde_json::json;
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_autostart::ManagerExt;
+
+use crate::settings::{self, Settings, OPACITY_STEPS, SIZE_STEPS};
+
+pub struct TrayItems<R: Runtime> {
+    show: CheckMenuItem<R>,
+    click_through: CheckMenuItem<R>,
+    on_top: CheckMenuItem<R>,
+    flip: CheckMenuItem<R>,
+    autostart: CheckMenuItem<R>,
+    sizes: Vec<(u32, CheckMenuItem<R>)>,
+    opacities: Vec<(u32, CheckMenuItem<R>)>,
+}
+
+pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let s = settings::current(app);
+    let check = |id: &str, text: &str, on: bool| CheckMenuItem::with_id(app, id, text, true, on, None::<&str>);
+
+    let items = TrayItems {
+        show: check("show", "Show cat", true)?,
+        click_through: check("click_through", "Click-through", s.click_through)?,
+        on_top: check("on_top", "Always on top", s.always_on_top)?,
+        flip: check("flip", "Flip", s.flip)?,
+        autostart: check("autostart", "Launch at startup", autostart_enabled(app))?,
+        sizes: SIZE_STEPS
+            .iter()
+            .map(|&n| Ok((n, check(&format!("size:{n}"), &format!("{n}%"), s.size == n)?)))
+            .collect::<tauri::Result<_>>()?,
+        opacities: OPACITY_STEPS
+            .iter()
+            .map(|&n| Ok((n, check(&format!("opacity:{n}"), &format!("{n}%"), s.opacity == n)?)))
+            .collect::<tauri::Result<_>>()?,
+    };
+
+    let size_items: Vec<_> = items.sizes.iter().map(|(_, i)| i as &dyn tauri::menu::IsMenuItem<R>).collect();
+    let opacity_items: Vec<_> = items.opacities.iter().map(|(_, i)| i as &dyn tauri::menu::IsMenuItem<R>).collect();
+    let size_menu = Submenu::with_items(app, "Size", true, &size_items)?;
+    let opacity_menu = Submenu::with_items(app, "Opacity", true, &opacity_items)?;
+    let settings_item = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Bomboclat", true, None::<&str>)?;
+    let sep = || PredefinedMenuItem::separator(app);
+
+    let menu = Menu::with_items(
+        app,
+        &[
+            &items.show,
+            &sep()?,
+            &items.click_through,
+            &items.on_top,
+            &items.flip,
+            &size_menu,
+            &opacity_menu,
+            &sep()?,
+            &items.autostart,
+            &settings_item,
+            &sep()?,
+            &quit,
+        ],
+    )?;
+
+    let mut tray = TrayIconBuilder::with_id("main")
+        .tooltip("Bomboclat")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| on_menu(app, event.id().as_ref()))
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                toggle_visible(tray.app_handle());
+            }
+        });
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    }
+    tray.build(app)?;
+
+    app.manage(items);
+    Ok(())
+}
+
+fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    let s = settings::current(app);
+    let patch = match id {
+        "show" => return toggle_visible(app),
+        "autostart" => return set_autostart(app, !autostart_enabled(app)),
+        "settings" => return open_settings(app),
+        "quit" => return app.exit(0),
+        "click_through" => json!({ "clickThrough": !s.click_through }),
+        "on_top" => json!({ "alwaysOnTop": !s.always_on_top }),
+        "flip" => json!({ "flip": !s.flip }),
+        _ => {
+            if let Some(n) = id.strip_prefix("size:").and_then(|n| n.parse::<u32>().ok()) {
+                json!({ "size": n })
+            } else if let Some(n) = id.strip_prefix("opacity:").and_then(|n| n.parse::<u32>().ok()) {
+                json!({ "opacity": n })
+            } else {
+                return;
+            }
+        }
+    };
+    settings::update(app, patch);
+}
+
+/// Re-checks tray items from settings. Muda flips a check item on click, so
+/// this also undoes that for radio-style groups.
+pub fn sync<R: Runtime>(app: &AppHandle<R>, s: &Settings) {
+    let Some(items) = app.try_state::<TrayItems<R>>() else { return };
+    let _ = items.click_through.set_checked(s.click_through);
+    let _ = items.on_top.set_checked(s.always_on_top);
+    let _ = items.flip.set_checked(s.flip);
+    for (n, item) in &items.sizes {
+        let _ = item.set_checked(*n == s.size);
+    }
+    for (n, item) in &items.opacities {
+        let _ = item.set_checked(*n == s.opacity);
+    }
+}
+
+pub fn set_visible<R: Runtime>(app: &AppHandle<R>, visible: bool) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = if visible { w.show() } else { w.hide() };
+    }
+    if let Some(items) = app.try_state::<TrayItems<R>>() {
+        let _ = items.show.set_checked(visible);
+    }
+}
+
+pub fn toggle_visible<R: Runtime>(app: &AppHandle<R>) {
+    let visible = app
+        .get_webview_window("main")
+        .and_then(|w| w.is_visible().ok())
+        .unwrap_or(false);
+    set_visible(app, !visible);
+}
+
+pub fn open_settings<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(w) = app.get_webview_window("settings") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        return;
+    }
+    let built = WebviewWindowBuilder::new(app, "settings", WebviewUrl::App("settings.html".into()))
+        .title("Bomboclat Settings")
+        .inner_size(600.0, 720.0)
+        .min_inner_size(520.0, 560.0)
+        .center()
+        .build();
+    if let Err(e) = built {
+        eprintln!("[tray] settings window failed: {e}");
+    }
+}
+
+fn autostart_enabled<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.autolaunch().is_enabled().unwrap_or(false)
+}
+
+fn set_autostart<R: Runtime>(app: &AppHandle<R>, on: bool) {
+    let mgr = app.autolaunch();
+    let res = if on { mgr.enable() } else { mgr.disable() };
+    if let Err(e) = res {
+        eprintln!("[tray] autostart toggle failed: {e}");
+    }
+    if let Some(items) = app.try_state::<TrayItems<R>>() {
+        let _ = items.autostart.set_checked(autostart_enabled(app));
+    }
+}
+
+#[tauri::command]
+pub fn get_autostart(app: AppHandle) -> bool {
+    autostart_enabled(&app)
+}
+
+#[tauri::command]
+pub fn set_autostart_cmd(app: AppHandle, on: bool) -> bool {
+    set_autostart(&app, on);
+    autostart_enabled(&app)
+}
